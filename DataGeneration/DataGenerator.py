@@ -2,32 +2,33 @@ import os
 import torch
 import numpy as np
 from omnivoice import OmniVoice
-from Words import ListWords
 from tqdm import trange
 from random import randint as rand, choice, choices as choice_weights, uniform
 import soundfile as sf
 import json
 
 # Suportes:
+from Words import ListWords
+from Validator import validate_audio
 from Emotions import NON_VERBAL_TAGS, GENDER, AGE, PITCH, STYLE, ACCENTS
 
 print("Iniciando geração de dados de áudio para wake word 'Atlas'...")
 # Parâmetros:
 MODEL = "k2-fsa/OmniVoice"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-POISSON_LAMBDA = 10 # Com lambda=10, a maioria dos valores cairá entre os índices 5 e 15 (Tier S e Tier A).
+POISSON_LAMBDA = 12 # A maioria dos valores cairá entre os índices 5 e 15 (Tier S e Tier A).
 
 # Pesos:
-NON_VERBAL_TAGS_WEIGHTS = [4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] # Ponderação para tags não-verbais (sem tag é mais comum)
+NON_VERBAL_TAGS_WEIGHTS = [5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] # Ponderação para tags não-verbais (sem tag é mais comum)
 STYLE_WEIGHTS = [5, 1] # Ponderação, a cada 5 "" (sem estilo) temos 1 com "whisper"
 ACCENTS_WEIGHTS = [10, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1] # Ponderação para sotaques (sem sotaque é mais comum)
-EPOCH = 10
+EPOCH = 5000
 i = 0 # Contador
 data = {}
 
 # Definindo Diretório de Saída
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "Atlas-Dataset")
+OUTPUT_DIR = os.path.join(BASE_DIR, "Dataset-Atlas")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Instanciando modelo:
@@ -79,20 +80,33 @@ while i < EPOCH:
         audio = Model.generate(
             text=phrase,
             instruct=", ".join([c for c in choices if c]),
-            speed = uniform(0.9, 1.1), # Uma leve variação de velocidade
+            speed = uniform(0.9, 1.1), # Data Augmentation
             language = "Portuguese"
         )
 
         # Salvando audio:
         output_path = os.path.join(OUTPUT_DIR, f"sample_{i:05d}.wav")
         sf.write(output_path, audio[0], Model.sampling_rate)
+
+        # Validando o áudio gerado:
+        passed, metrics = validate_audio(output_path)
+        if not passed:
+            os.remove(output_path)  # descarta sem incrementar i
+            print(f"[REJEITADO] frase='{phrase}' | métricas={metrics}")
+            continue  # tenta de novo com nova frase
+        
+        # Se passou na validação, salva os metadados:
         data[f"sample_{i:05d}"] = {
+            "phrase": phrase,
             "person": choices[0],
             "age": choices[1],
             "pitch": choices[2],
             "style": choices[3],
-            "accent": choices[4]
+            "accent": choices[4],
+            "zcr": metrics["zcr"],
+            "spectral_var": metrics["spectral_var"],
         }
+
         print(f"Áudio gerado e salvo: {output_path} | Frase: '{phrase}' | Atributos: {', '.join([c for c in choices if c])}")
         i += 1 # Incrementa o contador de arquivos gerados apenas em caso de sucesso
     except Exception as e:

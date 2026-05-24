@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>mic monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #111118;
+    --border:    #1e1e2e;
+    --accent:    #7c6af7;
+    --accent2:   #3ecfcf;
+    --danger:    #f25f7e;
+    --text:      #e8e8f0;
+    --muted:     #4a4a6a;
+    --mono:      'Space Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1.5rem 4rem;
+    overflow-x: hidden;
+  }
+
+  /* grid de ruído de fundo */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 780px;
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    font-family: var(--sans);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .brand span { color: var(--accent); }
+
+  .badge {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  /* ── waveform principal ── */
+  .waveform-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .waveform-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  canvas#waveform {
+    width: 100%;
+    height: 120px;
+    display: block;
+  }
+
+  /* ── barras de volume ── */
+  .bars-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  #bar-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 72px;
+  }
+
+  .bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+    transition: height 0.07s ease, background 0.3s;
+  }
+
+  /* ── métricas ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+  }
+
+  .metric-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .metric-value {
+    font-family: var(--sans);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .metric-value.accent  { color: var(--accent); }
+  .metric-value.accent2 { color: var(--accent2); }
+  .metric-value.danger  { color: var(--danger); }
+
+  .metric.wake-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.05);
+  }
+  .metric.wake-active .metric-label,
+  .metric.wake-active .metric-value {
+    color: #fff;
+  }
+
+  /* ── controles ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 0.65rem 1.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover  { background: var(--border); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+  .btn-primary:hover { filter: brightness(1.15); background: var(--accent); }
+
+  .btn-danger {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .btn-danger:hover { background: #f25f7e18; }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .status-dot.active  { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 1.4s infinite; }
+  .status-dot.stopped { background: var(--muted); box-shadow: none; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* ── peak meter vertical ── */
+  .peak-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #peak-meter {
+    width: 14px;
+    height: 120px;
+    background: var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  #peak-fill {
+    width: 100%;
+    background: linear-gradient(to top, var(--accent2), var(--accent));
+    border-radius: 7px;
+    transition: height 0.07s ease;
+    height: 0%;
+  }
+
+  .peak-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+
+  /* ── layout waveform + peak ── */
+  .waveform-row {
+    display: flex;
+    gap: 1rem;
+    align-items: stretch;
+    margin-bottom: 1.25rem;
+  }
+
+  .waveform-row .waveform-card {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  /* ── footer info ── */
+  .footer-info {
+    margin-top: 2rem;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    display: flex;
+    gap: 2rem;
+  }
+
+  /* ── disconnected overlay ── */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  #overlay p {
+    font-family: var(--sans);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  #overlay small {
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <p>conectando ao servidor...</p>
+  <small>certifique-se que o main.py está rodando</small>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">mic<span>.</span>monitor</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="status-dot stopped" id="status-dot"></div>
+      <span class="badge" id="status-text">parado</span>
+    </div>
+  </header>
+
+  <div class="waveform-row">
+    <div class="waveform-card">
+      <div class="card-label">waveform — amplitude</div>
+      <canvas id="waveform" width="700" height="120"></canvas>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+      <div id="peak-meter"><div id="peak-fill"></div></div>
+      <span class="peak-label">peak</span>
+    </div>
+  </div>
+
+  <div class="bars-card">
+    <div class="card-label">volume bar — histórico de energia</div>
+    <div id="bar-container"></div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric" id="wake-card" style="transition: all 0.2s;">
+      <div class="metric-label">wake word (alexa)</div>
+      <div class="metric-value" id="m-wake" style="font-size: 1.2rem;">aguardando</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">rms volume</div>
+      <div class="metric-value accent" id="m-rms">0.000</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">peak</div>
+      <div class="metric-value accent2" id="m-peak">0.000</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">chunk size</div>
+      <div class="metric-value">1 280</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-play" onclick="startCapture()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      iniciar captura
+    </button>
+    <button class="btn btn-danger" id="btn-stop" onclick="stopCapture()" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+      parar
+    </button>
+  </div>
+
+  <div class="footer-info">
+    <span>ws://127.0.0.1:8000/ws</span>
+    <span id="f-frames">frames: —</span>
+    <span id="f-packets">pacotes: 0</span>
+  </div>
+</div>
+
+<script>
+const WS_URL  = 'ws://127.0.0.1:8000/ws';
+const API_URL = 'http://127.0.0.1:8000';
+
+const BAR_COUNT  = 60;
+const WAVE_PTS   = 80;
+const HISTORY    = 200;
+
+// ── estado ──────────────────────────────────────────────────────────────────
+let ws           = null;
+let capturing    = false;
+let packets      = 0;
+let peakVal      = 0;
+let waveHistory  = new Array(HISTORY).fill(0);
+let barHistory   = new Array(BAR_COUNT).fill(0);
+
+// ── canvas ───────────────────────────────────────────────────────────────────
+const waveCanvas = document.getElementById('waveform');
+const waveCtx    = waveCanvas.getContext('2d');
+
+// ── barras ───────────────────────────────────────────────────────────────────
+const barContainer = document.getElementById('bar-container');
+for (let i = 0; i < BAR_COUNT; i++) {
+  const b = document.createElement('div');
+  b.className = 'bar';
+  barContainer.appendChild(b);
+}
+const bars = barContainer.querySelectorAll('.bar');
+
+// ── elementos ────────────────────────────────────────────────────────────────
+const overlay    = document.getElementById('overlay');
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const btnPlay    = document.getElementById('btn-play');
+const btnStop    = document.getElementById('btn-stop');
+const mRms       = document.getElementById('m-rms');
+const mPeak      = document.getElementById('m-peak');
+const mWake      = document.getElementById('m-wake');
+const wakeCard   = document.getElementById('wake-card');
+const peakFill   = document.getElementById('peak-fill');
+const fFrames    = document.getElementById('f-frames');
+const fPackets   = document.getElementById('f-packets');
+
+// ── websocket ────────────────────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    overlay.style.display = 'none';
+  };
+
+  ws.onmessage = (ev) => {
+    if (!capturing) return;
+    const data = JSON.parse(ev.data);
+    packets++;
+    onAudioData(data);
+  };
+
+  ws.onclose = () => {
+    overlay.style.display = 'flex';
+    setTimeout(connect, 2000);
+  };
+}
+
+connect();
+
+// ── dados de áudio ───────────────────────────────────────────────────────────
+function onAudioData(data) {
+  const rms        = data.rms;
+  const waveform   = data.waveform;
+  const wakeWord   = data.wake_word;
+  const wakeScore  = data.wake_score;
+
+  // peak com decay
+  peakVal = Math.max(peakVal * 0.97, rms);
+
+  // atualizar métricas
+  mRms.textContent    = rms.toFixed(3);
+  mPeak.textContent   = peakVal.toFixed(3);
+  fFrames.textContent = `frames: ${data.frames}`;
+  fPackets.textContent = `pacotes: ${packets}`;
+
+  // controle visual da wake word
+  if (wakeWord) {
+    wakeCard.classList.add('wake-active');
+    mWake.textContent = 'DETECTADO!';
+    
+    if (window.wakeTimer) clearTimeout(window.wakeTimer);
+    window.wakeTimer = setTimeout(() => {
+      wakeCard.classList.remove('wake-active');
+      mWake.textContent = 'aguardando';
+    }, 1500);
+  } else if (!wakeCard.classList.contains('wake-active')) {
+    mWake.textContent = (wakeScore * 100).toFixed(1) + '%';
+  }
+
+  // peak meter vertical
+  peakFill.style.height = (peakVal * 100).toFixed(1) + '%';
+
+  // cor dinâmica do peak
+  if (peakVal > 0.75) {
+    peakFill.style.background = 'linear-gradient(to top, #f25f7e, #f2a45f)';
+  } else if (peakVal > 0.45) {
+    peakFill.style.background = 'linear-gradient(to top, #efcf3e, #3ecfcf)';
+  } else {
+    peakFill.style.background = 'linear-gradient(to top, #3ecfcf, #7c6af7)';
+  }
+
+  // histórico de waveform (usa o primeiro ponto de cada chunk como representante)
+  const rep = waveform[Math.floor(waveform.length / 2)];
+  waveHistory.push(rms);
+  if (waveHistory.length > HISTORY) waveHistory.shift();
+
+  // histórico de barras
+  barHistory.push(rms);
+  if (barHistory.length > BAR_COUNT) barHistory.shift();
+
+  drawWaveform(waveform, rms);
+  drawBars(rms);
+}
+
+// ── desenhar waveform ─────────────────────────────────────────────────────────
+function drawWaveform(points, rms) {
+  const W = waveCanvas.width;
+  const H = waveCanvas.height;
+  const mid = H / 2;
+
+  waveCtx.clearRect(0, 0, W, H);
+
+  // linha central
+  waveCtx.strokeStyle = '#1e1e2e';
+  waveCtx.lineWidth = 1;
+  waveCtx.beginPath();
+  waveCtx.moveTo(0, mid);
+  waveCtx.lineTo(W, mid);
+  waveCtx.stroke();
+
+  // cor baseada em volume
+  const color = rms > 0.6 ? '#f25f7e' : rms > 0.3 ? '#3ecfcf' : '#7c6af7';
+
+  // waveform superior (pontos reais do chunk)
+  waveCtx.strokeStyle = color;
+  waveCtx.lineWidth = 1.8;
+  waveCtx.beginPath();
+  points.forEach((v, i) => {
+    const x = (i / (points.length - 1)) * W;
+    const y = mid - v * mid * 0.88;
+    i === 0 ? waveCtx.moveTo(x, y) : waveCtx.lineTo(x, y);
+  });
+  waveCtx.stroke();
+
+  // espelho inferior com transparência
+  waveCtx.strokeStyle = color;
+  waveCtx.globalAlpha = 0.3;
+  waveCtx.beginPath();
+  points.forEach((v, i) => {
+    const x = (i / (points.length - 1)) * W;
+    const y = mid + v * mid * 0.88;
+    i === 0 ? waveCtx.moveTo(x, y) : waveCtx.lineTo(x, y);
+  });
+  waveCtx.stroke();
+  waveCtx.globalAlpha = 1;
+
+  // área preenchida superior
+  waveCtx.fillStyle = color;
+  waveCtx.globalAlpha = 0.06;
+  waveCtx.beginPath();
+  waveCtx.moveTo(0, mid);
+  points.forEach((v, i) => {
+    const x = (i / (points.length - 1)) * W;
+    const y = mid - v * mid * 0.88;
+    waveCtx.lineTo(x, y);
+  });
+  waveCtx.lineTo(W, mid);
+  waveCtx.closePath();
+  waveCtx.fill();
+  waveCtx.globalAlpha = 1;
+}
+
+// ── desenhar barras ───────────────────────────────────────────────────────────
+function drawBars(currentRms) {
+  barHistory.forEach((v, i) => {
+    const h = Math.max(2, Math.round(v * 72));
+    const bar = bars[i];
+    bar.style.height = h + 'px';
+
+    // gradiente de cor por posição e volume
+    const age = i / BAR_COUNT;
+    if (v > 0.6) {
+      bar.style.background = '#f25f7e';
+    } else if (v > 0.3) {
+      bar.style.background = '#3ecfcf';
+    } else {
+      bar.style.background = `rgba(124, 106, 247, ${0.3 + age * 0.7})`;
+    }
+  });
+}
+
+// ── controles ─────────────────────────────────────────────────────────────────
+async function startCapture() {
+  await fetch(`${API_URL}/capture/start`, { method: 'POST' });
+  capturing = true;
+  packets   = 0;
+  peakVal   = 0;
+
+  btnPlay.style.display = 'none';
+  btnStop.style.display = 'flex';
+  statusDot.className   = 'status-dot active';
+  statusText.textContent = 'capturando';
+}
+
+async function stopCapture() {
+  await fetch(`${API_URL}/capture/stop`, { method: 'POST' });
+  capturing = false;
+
+  btnPlay.style.display = 'flex';
+  btnStop.style.display = 'none';
+  statusDot.className   = 'status-dot stopped';
+  statusText.textContent = 'parado';
+
+  // limpar canvas
+  waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+  bars.forEach(b => { b.style.height = '2px'; });
+  mRms.textContent  = '0.000';
+  mPeak.textContent = '0.000';
+  peakFill.style.height = '0%';
+}
+</script>
+</body>
+</html>

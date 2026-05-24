@@ -1,0 +1,13 @@
+# lib de monitoramento do microfone
+sounddevice
+
+# libs de trigger detection
+openwakeword # Wake word detection
+webrtcvad-wheels # Voice activity detection
+
+# libs auxiliares
+numpy
+
+# libs para API
+fastapi
+uvicorn

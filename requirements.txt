@@ -11,3 +11,7 @@ numpy
 # libs para API
 fastapi
 uvicorn
+
+# libs para treinamento de wake word
+omnivoice
+# torch instalado manualmente

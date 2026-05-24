@@ -2,3 +2,6 @@
 .venv/
 __pycache__/
 Dataset*/
+ModelTraning/assets/
+ModelTraning/work/
+ModelTraning/models/

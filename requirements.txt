@@ -15,4 +15,17 @@ uvicorn
 # libs para treinamento de wake word
 omnivoice
 soundfile
-# torch instalado manualmente
+torchinfo==1.8.0
+torchmetrics==1.2.0
+audiomentations==0.33.0
+torch-audiomentations==0.11.0
+speechbrain==0.5.14
+acoustics==0.2.6
+mutagen==1.47.0
+datasets==2.14.6
+scipy
+tqdm
+onnx
+onnx-tf==1.10.0
+tensorflow-cpu==2.8.1
+tensorflow-probability==0.16.0

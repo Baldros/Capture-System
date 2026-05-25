@@ -1,7 +1,7 @@
 # lib de monitoramento do microfone
 sounddevice
 
-# libs de trigger detection
+# libs de trigger detection/inferencia
 openwakeword # Wake word detection
 webrtcvad-wheels # Voice activity detection
 
@@ -11,21 +11,9 @@ numpy
 # libs para API
 fastapi
 uvicorn
+websockets
 
-# libs para treinamento de wake word
+# libs para geracao de dados
 omnivoice
 soundfile
-torchinfo==1.8.0
-torchmetrics==1.2.0
-audiomentations==0.33.0
-torch-audiomentations==0.11.0
-speechbrain==0.5.14
-acoustics==0.2.6
-mutagen==1.47.0
-datasets==2.14.6
-scipy
 tqdm
-onnx
-onnx-tf==1.10.0
-tensorflow-cpu==2.8.1
-tensorflow-probability==0.16.0

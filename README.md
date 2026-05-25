@@ -35,7 +35,6 @@ python -m venv .venv
 Instale todos os pacotes requeridos através do `pip`:
 ```powershell
 pip install -r requirements.txt
-pip install websockets
 ```
 
 ### 3. Rodando a Aplicação
@@ -53,4 +52,5 @@ Clique em **"Iniciar Captura"** na parte inferior da interface web para que o pi
 
 ## 🔍 Expandindo o Wake Word ("Atlas")
 Apesar de o projeto ter como alvo final a palavra de ativação "Atlas", o `openWakeWord` não possui esse modelo nativamente.
-Caso decida treinar um modelo `.onnx` customizado no futuro, siga o fluxo de treino do Colab providenciado pelos criadores do [openWakeWord](https://github.com/dscripka/openWakeWord) e deposite o arquivo final na pasta de models da lib, ou passe o caminho absoluto na inicialização da classe `Model`.
+O treino customizado usa uma venv separada, com dependencias proprias em `ModelTraning/requirements.txt`.
+Veja `ModelTraning/README.md`.

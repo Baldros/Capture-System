@@ -1,0 +1,25 @@
+{
+  "test_fraction": 0.2,
+  "seed": 1337,
+  "sample_rate": 16000,
+  "min_total_length": 32000,
+  "clip_buffer_samples": 12000,
+  "augmentation_rounds": 1,
+  "augmentation_batch_size": 16,
+  "background_dirs": [],
+  "rir_dirs": [],
+  "generic_negative_features": "./assets/openwakeword_features_ACAV100M_2000_hrs_16bit.npy",
+  "false_positive_validation_features": "./assets/validation_set_features.npy",
+  "negative_source_dir": null,
+  "negative_test_samples": 2000,
+  "steps": 10000,
+  "batch_n_per_class": {
+    "generic_negative": 1024,
+    "positive": 50
+  },
+  "model_type": "dnn",
+  "layer_size": 32,
+  "max_negative_weight": 1500,
+  "target_false_positives_per_hour": 0.2,
+  "convert_to_tflite": false
+}

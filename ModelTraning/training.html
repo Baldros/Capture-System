@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Treinamento de Wake Word</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --text: #17202a;
+      --muted: #5f6b7a;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --accent: #1769aa;
+      --accent-soft: #e8f2fb;
+      --code: #101820;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .wrap {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header .wrap {
+      padding: 34px 0 26px;
+    }
+
+    main.wrap {
+      padding: 28px 0 48px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-top: 34px;
+      padding-top: 6px;
+      font-size: 24px;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 12px 0 0;
+    }
+
+    ul,
+    ol {
+      margin: 12px 0 0;
+      padding-left: 24px;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0 0;
+      padding: 14px 16px;
+      border-radius: 6px;
+      background: var(--code);
+      color: #eef4fb;
+    }
+
+    pre code {
+      font-size: 14px;
+    }
+
+    .lead {
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .notice {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1px solid #b9d8f2;
+      border-radius: 6px;
+      background: var(--accent-soft);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 16px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eef1f5;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 12px;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef1f5;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    @media (max-width: 760px) {
+      h1 {
+        font-size: 28px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Treinamento de Wake Word</h1>
+      <p class="lead">
+        Para treinar uma wake word, primeiro voce precisa ter dados de treinamento:
+        uma pasta com arquivos <code>.wav</code> positivos da palavra ou frase que deve ativar o sistema.
+        Neste projeto, esses audios podem ser criados pelo fluxo em <code>DataGeneration</code>.
+      </p>
+      <div class="notice">
+        O treino nao precisa saber o texto da wake word. Ele aprende pelos exemplos positivos da pasta.
+        O nome do modelo e inferido pelo nome da pasta, e pode ser sobrescrito com <code>--model-name</code>.
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Visao geral</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Entrada</h3>
+          <p>Uma pasta com WAVs positivos. Exemplo:</p>
+          <pre><code>DataGeneration/Dataset-Atlas</code></pre>
+          <span class="tag">Obrigatorio</span>
+        </div>
+        <div class="card">
+          <h3>Saida</h3>
+          <p>Um modelo ONNX pronto para usar com <code>openwakeword</code>. Exemplo:</p>
+          <pre><code>ModelTraning/models/atlas.onnx</code></pre>
+          <span class="tag">Gerado pelo treino</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Arquitetura do processo</h2>
+      <ol>
+        <li><strong>Geracao dos dados positivos:</strong> use <code>DataGeneration</code> para criar WAVs da wake word.</li>
+        <li><strong>Assets negativos:</strong> baixe features negativas genericas usadas para ensinar o modelo a nao ativar com qualquer outro audio.</li>
+        <li><strong>Split automatico:</strong> o script separa os WAVs positivos em treino e teste.</li>
+        <li><strong>Augmentation:</strong> os positivos sao padronizados, deslocados e aumentados acusticamente.</li>
+        <li><strong>Extracao de features:</strong> o audio vira features no formato esperado pelo <code>openWakeWord</code>.</li>
+        <li><strong>Treino binario:</strong> o modelo aprende classe <code>1</code> para wake word e classe <code>0</code> para nao wake word.</li>
+        <li><strong>Exportacao:</strong> o melhor checkpoint e salvo como <code>.onnx</code>.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Passo a passo</h2>
+
+      <h3>1. Instalar dependencias</h3>
+      <p>Crie uma virtualenv separada com Python 3.10 e instale as dependencias de treino:</p>
+      <pre><code>py -3.10 -m venv ModelTraning\.venv_training
+.\ModelTraning\.venv_training\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r ModelTraning/requirements.txt</code></pre>
+      <p>
+        Esse arquivo usa PyTorch/Torchaudio 1.13.1 com CUDA 11.7, alinhado ao extra
+        <code>full</code> do openWakeWord 0.6.0. O treino usa GPU automaticamente quando <code>torch.cuda.is_available()</code>
+        retorna <code>True</code>.
+      </p>
+      <pre><code>python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda)"</code></pre>
+
+      <h3>2. Gerar os dados positivos</h3>
+      <p>
+        Rode o fluxo de <code>DataGeneration</code> para criar a pasta com WAVs positivos.
+        Para Atlas, a pasta esperada hoje e:
+      </p>
+      <pre><code>DataGeneration/Dataset-Atlas</code></pre>
+      <p>Essa pasta deve conter arquivos como <code>sample_00000.wav</code>, <code>sample_00001.wav</code> etc.</p>
+
+      <h3>3. Baixar assets do openWakeWord e negativos</h3>
+      <p>Esse passo precisa rodar pelo menos uma vez por maquina/ambiente:</p>
+      <pre><code>python ModelTraning/download_assets.py</code></pre>
+      <p>
+        Ele baixa os modelos internos de feature extraction para o pacote <code>openwakeword</code> instalado
+        na venv ativa, alem dos arquivos em <code>ModelTraning/assets</code>. Os assets negativos sao grandes
+        porque representam exemplos genericos de audio que nao devem ativar a wake word.
+      </p>
+
+      <h3>4. Preparar audios</h3>
+      <p>Converta os WAVs positivos para a copia derivada em mono, 16 kHz, PCM_16:</p>
+      <pre><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --stage prepare</code></pre>
+
+      <h3>5. Treinar</h3>
+      <p>Para Atlas, rode:</p>
+      <pre><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas</code></pre>
+      <p>
+        Como a pasta chama <code>Dataset-Atlas</code>, o script infere o nome <code>atlas</code>
+        e salva <code>ModelTraning/models/atlas.onnx</code>.
+      </p>
+      <p>
+        Durante a execucao, o terminal mostra as etapas do pipeline, contagens de arquivos,
+        shapes dos arrays de features, barras de progresso e mensagens periodicas em operacoes longas.
+        Use <code>--no-visual-progress</code> se quiser esconder esses indicadores extras.
+      </p>
+
+      <h3>6. Treinar outra wake word</h3>
+      <p>Coloque os WAVs positivos em outra pasta e passe essa pasta ao script:</p>
+      <pre><code>python ModelTraning/train.py DataGeneration/Dataset-Jarvis</code></pre>
+      <p>Isso gera <code>ModelTraning/models/jarvis.onnx</code>.</p>
+    </section>
+
+    <section>
+      <h2>Comandos uteis</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Objetivo</th>
+            <th>Comando</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Preparar audios do Atlas</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --stage prepare</code></td>
+          </tr>
+          <tr>
+            <td>Treino padrao do Atlas</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas</code></td>
+          </tr>
+          <tr>
+            <td>Definir nome manual do modelo</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --model-name atlas_v2</code></td>
+          </tr>
+          <tr>
+            <td>Aumentar tempo de treino</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --steps 50000</code></td>
+          </tr>
+          <tr>
+            <td>Refazer audios preparados</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --overwrite-audio --stage prepare</code></td>
+          </tr>
+          <tr>
+            <td>Refazer split e features do zero</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --overwrite-split --overwrite-features</code></td>
+          </tr>
+          <tr>
+            <td>Usar ruidos de fundo locais</td>
+            <td><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --background-dir caminho/ruidos</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Para que serve o JSON?</h2>
+      <p>
+        O JSON nao e obrigatorio e nao precisa existir para cada wake word. Ele serve como preset
+        de parametros avancados do treino. Use JSON quando quiser repetir exatamente uma configuracao
+        tecnica, nao quando quiser apenas treinar outra palavra.
+      </p>
+      <p>Exemplos de parametros que cabem no JSON:</p>
+      <ul>
+        <li><code>steps</code>: quantidade de passos de treino.</li>
+        <li><code>batch_n_per_class</code>: composicao do batch entre positivos e negativos.</li>
+        <li><code>background_dirs</code>: pastas com ruidos de fundo para augmentation.</li>
+        <li><code>rir_dirs</code>: pastas com room impulse responses.</li>
+        <li><code>target_false_positives_per_hour</code>: alvo de falsos positivos por hora.</li>
+        <li><code>convert_to_tflite</code>: exportar tambem TFLite.</li>
+      </ul>
+      <pre><code>python ModelTraning/train.py DataGeneration/Dataset-Atlas --config ModelTraning/training_preset.json</code></pre>
+      <p>
+        O preset real fica em <code>ModelTraning/training_preset.json</code>. Para o uso normal,
+        nao crie outro JSON. Para Atlas, o comando direto ja e suficiente.
+      </p>
+    </section>
+
+    <section>
+      <h2>GPU, TensorFlow e TFLite</h2>
+      <p>
+        O treino padrao gera <code>.onnx</code> e usa PyTorch. Se o PyTorch instalado tiver CUDA
+        e a GPU estiver disponivel, o script usa GPU automaticamente para a extracao de features
+        e para o treino.
+      </p>
+      <p>
+        TensorFlow nao e necessario para treinar. Ele so entra na conversao opcional para
+        <code>.tflite</code>, por isso ficou separado em <code>ModelTraning/requirements-tflite.txt</code>.
+        Em Python 3.13, pins antigos como <code>tensorflow-cpu==2.8.1</code> nao resolvem.
+      </p>
+    </section>
+
+    <section>
+      <h2>Estrutura gerada</h2>
+      <pre><code>ModelTraning/
+  assets/
+    openwakeword_features_ACAV100M_2000_hrs_16bit.npy
+    validation_set_features.npy
+  work/
+    atlas/
+      positive_16k/
+      positive_train/
+      positive_test/
+      features/
+  models/
+    atlas.onnx</code></pre>
+    </section>
+
+    <section>
+      <h2>Observacoes importantes</h2>
+      <ul>
+        <li>A etapa <code>--stage prepare</code> cria uma copia derivada em 16 kHz mono PCM_16; os WAVs originais nao sao alterados.</li>
+        <li>Quanto mais variedade nos positivos, melhor: vozes, velocidades, acentos, volumes e ambientes.</li>
+        <li>Os assets negativos sao essenciais. Sem exemplos negativos, o modelo tende a ativar com qualquer fala.</li>
+        <li>O arquivo <code>.onnx</code> final e o artefato que deve ser usado na aplicacao principal.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Opcional: somente para usar --convert-to-tflite no ambiente de treino.
+# Pins alinhados ao extra "full" do openWakeWord 0.6.0.
+
+tensorflow-cpu==2.8.1
+tensorflow-probability==0.16.0
+protobuf>=3.20,<4
+onnx-tf==1.10.0

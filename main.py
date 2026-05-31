@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import threading
+from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
@@ -15,6 +16,8 @@ from openwakeword.model import Model
 SAMPLE_RATE = 16_000   # Hz — padrão para voz
 CHUNK_SIZE  = 1_280    # frames por callback (~80 ms)
 CHANNELS    = 1
+WAKEWORD_MODEL_PATH = Path(__file__).resolve().parent / "ModelTraning" / "models" / "atlas.onnx"
+WAKEWORD_NAME = WAKEWORD_MODEL_PATH.stem
 GAIN        = 8.0      # multiplicador de ganho para visualização
 
 app = FastAPI()
@@ -30,7 +33,7 @@ class AudioState:
 state = AudioState()
 
 # inicializa o modelo openwakeword com ONNX
-oww_model = Model(wakeword_models=["alexa"], inference_framework="onnx")
+oww_model = Model(wakeword_models=[str(WAKEWORD_MODEL_PATH)], inference_framework="onnx")
 
 # ─── cálculos do sinal ────────────────────────────────────────────────────────
 
@@ -65,7 +68,7 @@ def audio_callback(indata: np.ndarray, frames: int, time, status):
 
     # Detecção de Wake Word
     prediction = oww_model.predict(chunk)
-    wake_score = float(prediction.get("alexa", 0.0))
+    wake_score = float(prediction.get(WAKEWORD_NAME, 0.0))
     wake_detected = bool(wake_score > 0.5)
 
     payload = json.dumps({

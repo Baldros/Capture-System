@@ -1,0 +1,32 @@
+# Ambiente dedicado para treino openWakeWord.
+# Recomendado: Python 3.10 em uma venv separada.
+#
+# PyTorch 1.13.1/torchaudio 0.13.1 e a pilha abaixo seguem o extra
+# "full" publicado pelo openWakeWord 0.6.0. O wheel CUDA abaixo usa
+# cu117; para CPU, troque as tres linhas seguintes por:
+#   torch==1.13.1
+#   torchaudio==0.13.1
+
+--extra-index-url https://download.pytorch.org/whl/cu117
+torch==1.13.1+cu117
+torchaudio==0.13.1+cu117
+
+# openWakeWord 0.6.0 ainda importa pkg_resources; setuptools 81+ removeu esse modulo.
+setuptools<81
+openwakeword==0.6.0
+numpy>=1.23,<2
+scipy>=1.10,<1.12
+soundfile>=0.12,<1
+mutagen>=1.46.0,<2
+torchinfo>=1.8.0,<2
+torchmetrics>=0.11.4,<1
+speechbrain>=0.5.14,<1
+audiomentations>=0.30.0,<1
+torch-audiomentations>=0.11.0,<1
+tqdm>=4.64.0,<5
+acoustics>=0.2.6,<1
+PyYAML>=6.0,<7
+onnx==1.14.0
+pronouncing>=0.2.0,<1
+datasets>=2.14.4,<3
+deep-phonemizer==0.0.19

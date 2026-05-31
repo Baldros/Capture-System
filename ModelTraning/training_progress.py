@@ -25,7 +25,7 @@ def file_size(path: Path) -> str:
         if size < 1024 or unit == "GB":
             return f"{size:.1f} {unit}" if unit != "B" else f"{size} B"
         size /= 1024
-    return f"{size:.1f} GB"
+    return f"{size:.1f} GB"  # pragma: no cover - inalcancavel, o loop sempre retorna em "GB"
 
 
 def progress_iter(

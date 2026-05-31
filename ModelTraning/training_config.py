@@ -68,6 +68,7 @@ def load_config(path: Path | None) -> dict[str, Any]:
     for key in (
         "work_dir",
         "output_dir",
+        "prepared_positive_dir",
         "generic_negative_features",
         "false_positive_validation_features",
         "negative_source_dir",

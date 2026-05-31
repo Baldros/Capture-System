@@ -90,9 +90,16 @@ def prepare_positive_split(
     train_dir.mkdir(parents=True, exist_ok=True)
     test_dir.mkdir(parents=True, exist_ok=True)
 
+    if len(wavs) < 2:
+        raise ValueError(
+            f"Sao necessarios ao menos 2 WAVs positivos para o split treino/teste; "
+            f"encontrados {len(wavs)} em {source_dir}."
+        )
+
     shuffled = wavs[:]
     random.Random(seed).shuffle(shuffled)
-    n_test = max(1, int(len(shuffled) * test_fraction))
+    # Garante pelo menos 1 clip em cada lado do split.
+    n_test = min(max(1, int(len(shuffled) * test_fraction)), len(shuffled) - 1)
     splits = {
         test_dir: shuffled[:n_test],
         train_dir: shuffled[n_test:],

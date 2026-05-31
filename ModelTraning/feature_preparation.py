@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import gc
 import os
+import random
 import uuid
 from contextlib import suppress
 from pathlib import Path
@@ -46,7 +47,7 @@ def infer_total_length(
     if not clips:
         raise FileNotFoundError(f"Nenhum .wav encontrado em {positive_test_dir}")
 
-    sample = clips[: min(50, len(clips))]
+    sample = random.Random(0).sample(clips, min(50, len(clips)))
     lengths = []
     for clip in sample:
         sr, data = scipy.io.wavfile.read(clip)
@@ -101,7 +102,7 @@ def compute_features_from_generator_safe(
                 "Aumente n_total para ser >= batch size."
             )
 
-        features = audio_features.embed_clips(audio_data, batch_size=batch_size)
+        features = audio_features.embed_clips(audio_data, batch_size=batch_size, ncpu=ncpu)
         fp[row_counter : row_counter + features.shape[0], :, :] = features
         row_counter += features.shape[0]
         fp.flush()

@@ -13,7 +13,7 @@ except ImportError:
     from training_progress import progress_iter
 
 
-def wav_paths(directory: Path) -> list[Path]:
+def wav_files(directory: Path) -> list[Path]:
     return sorted(directory.glob("*.wav"))
 
 
@@ -64,8 +64,8 @@ def read_manifest(path: Path) -> dict[str, Any] | None:
 
 
 def output_is_current(source_dir: Path, output_dir: Path, sample_rate: int, manifest_path: Path) -> bool:
-    source_files = wav_paths(source_dir)
-    output_files = wav_paths(output_dir)
+    source_files = wav_files(source_dir)
+    output_files = wav_files(output_dir)
     if not source_files or len(source_files) != len(output_files):
         return False
 
@@ -92,7 +92,7 @@ def prepare_training_audio(
     overwrite: bool = False,
     show_progress: bool = True,
 ) -> dict[str, Any]:
-    source_files = wav_paths(source_dir)
+    source_files = wav_files(source_dir)
     if not source_files:
         raise FileNotFoundError(f"Nenhum .wav encontrado em {source_dir}")
 

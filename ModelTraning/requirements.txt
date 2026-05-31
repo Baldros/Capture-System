@@ -1,5 +1,4 @@
 # Ambiente dedicado para treino openWakeWord.
-# Ambiente dedicado para treino openWakeWord.
 # Recomendado: Python 3.10 em uma venv separada.
 #
 # PyTorch 1.13.1/torchaudio 0.13.1 e a pilha abaixo seguem o extra

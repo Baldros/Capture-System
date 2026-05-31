@@ -15,7 +15,6 @@ def require_training_imports() -> dict[str, Any]:
         from openwakeword.train import (
             Model as TrainModel,
             augment_clips,
-            compute_features_from_generator,
             convert_onnx_to_tflite,
             mmap_batch_generator,
         )
@@ -38,7 +37,6 @@ def require_training_imports() -> dict[str, Any]:
         "mmap_batch_generator": mmap_batch_generator,
         "TrainModel": TrainModel,
         "convert_onnx_to_tflite": convert_onnx_to_tflite,
-        "compute_features_from_generator": compute_features_from_generator,
     }
 
     if not _TORCH_DEVICE_LOGGED:

@@ -26,6 +26,26 @@ def npy_shape(path: Path) -> tuple[int, ...]:
     return tuple(int(i) for i in np.load(path, mmap_mode="r").shape)
 
 
+# Tamanho de batch da validacao de false positives. As janelas sao geradas com
+# stride 1 (uma predicao por frame, como na inferencia real), entao o conjunto
+# pode ter centenas de milhares de janelas. Iterar em batches limita a memoria
+# transferida por vez sem alterar quantas/quais janelas sao avaliadas, ou seja,
+# sem mudar a metrica de false positives por hora.
+FALSE_POSITIVE_VAL_BATCH = 1024
+
+
+def require_asset_file(label: str, path: Path) -> None:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{label} ausente: {path}. Rode: python ModelTraning/download_assets.py"
+        )
+    if path.stat().st_size == 0:
+        raise ValueError(
+            f"{label} vazio (0 bytes): {path}. Download corrompido; "
+            "rode novamente: python ModelTraning/download_assets.py --overwrite"
+        )
+
+
 def train_model(
     config: dict[str, Any],
     feature_dir: Path,
@@ -40,10 +60,8 @@ def train_model(
 
     generic_negative_features = Path(config["generic_negative_features"])
     false_positive_features = Path(config["false_positive_validation_features"])
-    if not generic_negative_features.exists():
-        raise FileNotFoundError(f"Feature negativa generica ausente: {generic_negative_features}")
-    if not false_positive_features.exists():
-        raise FileNotFoundError(f"Feature de validacao FP ausente: {false_positive_features}")
+    require_asset_file("Feature negativa generica", generic_negative_features)
+    require_asset_file("Feature de validacao FP", false_positive_features)
 
     feature_data_files = {
         "generic_negative": str(generic_negative_features),
@@ -127,7 +145,7 @@ def train_model(
     progress.ok(f"False-positive windows: {fp_windows.shape}")
     false_positive_loader = torch.utils.data.DataLoader(
         torch.utils.data.TensorDataset(torch.from_numpy(fp_windows), torch.from_numpy(fp_labels)),
-        batch_size=len(fp_labels),
+        batch_size=max(1, min(len(fp_labels), FALSE_POSITIVE_VAL_BATCH)),
     )
 
     with progress.timed("Montando validacao balanceada", heartbeat_seconds=15):

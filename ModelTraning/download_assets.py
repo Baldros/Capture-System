@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -22,24 +23,37 @@ DEFAULT_ASSETS_DIR = Path(__file__).with_name("assets")
 
 def download_file(url: str, output_path: Path, overwrite: bool = False) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if output_path.exists() and not overwrite:
+    if output_path.exists() and output_path.stat().st_size > 0 and not overwrite:
         print(f"[skip] {output_path} already exists")
         return
 
     print(f"[download] {url}")
-    with urllib.request.urlopen(url) as response, output_path.open("wb") as target:
-        total = int(response.headers.get("Content-Length", "0") or 0)
-        done = 0
-        while True:
-            chunk = response.read(1024 * 1024)
-            if not chunk:
-                break
-            target.write(chunk)
-            done += len(chunk)
-            if total:
-                pct = done / total * 100
-                print(f"\r  {pct:5.1f}% {done / (1024 ** 2):.1f} MB", end="")
-        print()
+    # Baixa para um arquivo temporario e renomeia ao final, para que um download
+    # interrompido nao deixe um arquivo truncado/0-byte que seria considerado
+    # "existente" e nunca mais re-baixado.
+    tmp_path = output_path.with_name(f"{output_path.name}.{os.getpid()}.part")
+    try:
+        with urllib.request.urlopen(url) as response, tmp_path.open("wb") as target:
+            total = int(response.headers.get("Content-Length", "0") or 0)
+            done = 0
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                target.write(chunk)
+                done += len(chunk)
+                if total:
+                    pct = done / total * 100
+                    print(f"\r  {pct:5.1f}% {done / (1024 ** 2):.1f} MB", end="")
+            print()
+        if done == 0:
+            raise IOError(f"Download vazio de {url}")
+        if total and done != total:
+            raise IOError(f"Download incompleto de {url}: {done} de {total} bytes")
+        os.replace(tmp_path, output_path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 def download_openwakeword_models(overwrite: bool = False) -> None:

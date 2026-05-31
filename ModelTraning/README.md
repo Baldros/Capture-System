@@ -24,8 +24,8 @@ python -m pip install --upgrade pip
 pip install -r ModelTraning/requirements.txt
 ```
 
-O arquivo usa PyTorch/Torchaudio 1.13.1 com CUDA 11.7, uma combinacao alinhada
-ao extra `full` publicado pelo `openWakeWord 0.6.0`. Para checar se a GPU esta ativa:
+O arquivo usa PyTorch 1.13.1 / Torchaudio 0.13.1 com CUDA 11.7, uma combinacao
+alinhada ao extra `full` publicado pelo `openWakeWord 0.6.0`. Para checar se a GPU esta ativa:
 
 ```powershell
 python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda)"

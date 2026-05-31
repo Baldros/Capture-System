@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+import os
 import threading
 from pathlib import Path
 
@@ -17,7 +18,7 @@ SAMPLE_RATE = 16_000   # Hz — padrão para voz
 CHUNK_SIZE  = 1_280    # frames por callback (~80 ms)
 CHANNELS    = 1
 WAKEWORD_MODEL_PATH = Path(__file__).resolve().parent / "ModelTraning" / "models" / "atlas.onnx"
-WAKEWORD_NAME = WAKEWORD_MODEL_PATH.stem
+WAKEWORD_THRESHOLD = float(os.getenv("WAKEWORD_THRESHOLD", "0.5"))
 GAIN        = 8.0      # multiplicador de ganho para visualização
 
 app = FastAPI()
@@ -33,7 +34,12 @@ class AudioState:
 state = AudioState()
 
 # inicializa o modelo openwakeword com ONNX
-oww_model = Model(wakeword_models=[str(WAKEWORD_MODEL_PATH)], inference_framework="onnx")
+WAKEWORD_MODELS = ["alexa"]
+if WAKEWORD_MODEL_PATH.exists():
+    WAKEWORD_MODELS.append(str(WAKEWORD_MODEL_PATH))
+
+oww_model = Model(wakeword_models=WAKEWORD_MODELS, inference_framework="onnx")
+WAKEWORD_NAMES = list(oww_model.models.keys())
 
 # ─── cálculos do sinal ────────────────────────────────────────────────────────
 
@@ -54,6 +60,19 @@ def compute_waveform(chunk: np.ndarray, points: int = 80) -> list[float]:
         samples.append(float(min(np.mean(np.abs(chunk_f[start:end])), 1.0)))
     return samples
 
+def predict_wakeword(chunk: np.ndarray) -> tuple[bool, str | None, float, dict[str, float], str | None]:
+    try:
+        prediction = oww_model.predict(chunk)
+    except Exception as exc:
+        return False, None, 0.0, {}, f"{type(exc).__name__}: {exc}"
+
+    scores = {name: float(score) for name, score in prediction.items()}
+    if not scores:
+        return False, None, 0.0, scores, None
+
+    wake_name, wake_score = max(scores.items(), key=lambda item: item[1])
+    return wake_score > WAKEWORD_THRESHOLD, wake_name, wake_score, scores, None
+
 # ─── callback do sounddevice (roda em thread separada) ───────────────────────
 
 def audio_callback(indata: np.ndarray, frames: int, time, status):
@@ -67,16 +86,18 @@ def audio_callback(indata: np.ndarray, frames: int, time, status):
     waveform = compute_waveform(chunk)
 
     # Detecção de Wake Word
-    prediction = oww_model.predict(chunk)
-    wake_score = float(prediction.get(WAKEWORD_NAME, 0.0))
-    wake_detected = bool(wake_score > 0.5)
+    wake_detected, wake_name, wake_score, wake_scores, wake_error = predict_wakeword(chunk)
 
     payload = json.dumps({
         "rms":        round(rms, 4),
         "waveform":   [round(v, 4) for v in waveform],
         "frames":     frames,
         "wake_word":  wake_detected,
-        "wake_score": round(wake_score, 4)
+        "wake_name":  wake_name,
+        "wake_score": round(wake_score, 4),
+        "wake_scores": {name: round(score, 4) for name, score in wake_scores.items()},
+        "wake_models": WAKEWORD_NAMES,
+        "wake_error": wake_error,
     })
 
     # envia para todos os clientes conectados a partir do event loop async
@@ -151,6 +172,13 @@ async def list_devices():
         if d["max_input_channels"] > 0
     ]
     return {"devices": inputs, "default": sd.default.device[0]}
+
+@app.get("/wakeword")
+async def wakeword_info():
+    return {
+        "models": WAKEWORD_NAMES,
+        "threshold": WAKEWORD_THRESHOLD,
+    }
 
 # ─── WebSocket ────────────────────────────────────────────────────────────────
 

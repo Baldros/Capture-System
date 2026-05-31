@@ -13,7 +13,7 @@ Atualmente, o projeto suporta streaming contínuo de áudio via WebSockets, moni
 *   **Detecção de Wake Word (Gatilho de Voz):**
     *   Integrado com a biblioteca `openwakeword`.
     *   Suporte a inferência otimizada com o framework `ONNX`.
-    *   Modelo padrão de teste configurado para **"alexa"**.
+    *   Modelo customizado configurado em `ModelTraning/models/atlas.onnx`.
     *   Feedback visual imediato e contínuo da pontuação da inteligência artificial de detecção, piscando a tela quando a palavra for falada.
 
 ## 🛠️ Tecnologias Utilizadas
@@ -48,7 +48,7 @@ Abra o seu navegador web favorito e acesse:
 ```
 http://127.0.0.1:8000
 ```
-Clique em **"Iniciar Captura"** na parte inferior da interface web para que o pipeline comece a transmitir dados pelo socket. Diga "Alexa" para ativar o evento visual de wake word.
+Clique em **"Iniciar Captura"** na parte inferior da interface web para que o pipeline comece a transmitir dados pelo socket. Diga "Atlas" para ativar o evento visual de wake word.
 
 ## 🔍 Expandindo o Wake Word ("Atlas")
 Apesar de o projeto ter como alvo final a palavra de ativação "Atlas", o `openWakeWord` não possui esse modelo nativamente.

@@ -358,7 +358,7 @@
 
   <div class="metrics">
     <div class="metric" id="wake-card" style="transition: all 0.2s;">
-      <div class="metric-label">wake word (alexa)</div>
+      <div class="metric-label" id="wake-label">wake word</div>
       <div class="metric-value" id="m-wake" style="font-size: 1.2rem;">aguardando</div>
     </div>
     <div class="metric">
@@ -387,15 +387,15 @@
   </div>
 
   <div class="footer-info">
-    <span>ws://127.0.0.1:8000/ws</span>
+    <span id="f-ws">ws</span>
     <span id="f-frames">frames: —</span>
     <span id="f-packets">pacotes: 0</span>
   </div>
 </div>
 
 <script>
-const WS_URL  = 'ws://127.0.0.1:8000/ws';
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = window.location.origin;
+const WS_URL  = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
 const BAR_COUNT  = 60;
 const WAVE_PTS   = 80;
@@ -430,11 +430,33 @@ const btnPlay    = document.getElementById('btn-play');
 const btnStop    = document.getElementById('btn-stop');
 const mRms       = document.getElementById('m-rms');
 const mPeak      = document.getElementById('m-peak');
+const wakeLabel  = document.getElementById('wake-label');
 const mWake      = document.getElementById('m-wake');
 const wakeCard   = document.getElementById('wake-card');
 const peakFill   = document.getElementById('peak-fill');
+const fWs        = document.getElementById('f-ws');
 const fFrames    = document.getElementById('f-frames');
 const fPackets   = document.getElementById('f-packets');
+
+fWs.textContent = WS_URL;
+
+function setWakeModels(models) {
+  if (!Array.isArray(models) || models.length === 0) return;
+  wakeLabel.textContent = `wake word (${models.join(' / ')})`;
+}
+
+async function loadWakewordInfo() {
+  try {
+    const response = await fetch(`${API_URL}/wakeword`);
+    if (!response.ok) return;
+    const data = await response.json();
+    setWakeModels(data.models);
+  } catch (err) {
+    // A conexão WebSocket ainda mostra o estado real do servidor.
+  }
+}
+
+loadWakewordInfo();
 
 // ── websocket ────────────────────────────────────────────────────────────────
 function connect() {
@@ -446,9 +468,18 @@ function connect() {
 
   ws.onmessage = (ev) => {
     if (!capturing) return;
-    const data = JSON.parse(ev.data);
+    let data;
+    try {
+      data = JSON.parse(ev.data);
+    } catch (err) {
+      return;
+    }
     packets++;
     onAudioData(data);
+  };
+
+  ws.onerror = () => {
+    ws.close();
   };
 
   ws.onclose = () => {
@@ -461,10 +492,13 @@ connect();
 
 // ── dados de áudio ───────────────────────────────────────────────────────────
 function onAudioData(data) {
-  const rms        = data.rms;
-  const waveform   = data.waveform;
-  const wakeWord   = data.wake_word;
-  const wakeScore  = data.wake_score;
+  const rms        = Number(data.rms ?? 0);
+  const waveform   = Array.isArray(data.waveform) ? data.waveform : new Array(WAVE_PTS).fill(0);
+  const wakeWord   = Boolean(data.wake_word);
+  const wakeName   = data.wake_name || '';
+  const wakeScore  = Number(data.wake_score ?? 0);
+
+  setWakeModels(data.wake_models);
 
   // peak com decay
   peakVal = Math.max(peakVal * 0.97, rms);
@@ -476,9 +510,12 @@ function onAudioData(data) {
   fPackets.textContent = `pacotes: ${packets}`;
 
   // controle visual da wake word
-  if (wakeWord) {
+  if (data.wake_error) {
+    mWake.textContent = 'erro modelo';
+    wakeCard.classList.remove('wake-active');
+  } else if (wakeWord) {
     wakeCard.classList.add('wake-active');
-    mWake.textContent = 'DETECTADO!';
+    mWake.textContent = wakeName ? `${wakeName.toUpperCase()}!` : 'DETECTADO!';
     
     if (window.wakeTimer) clearTimeout(window.wakeTimer);
     window.wakeTimer = setTimeout(() => {
@@ -486,7 +523,8 @@ function onAudioData(data) {
       mWake.textContent = 'aguardando';
     }, 1500);
   } else if (!wakeCard.classList.contains('wake-active')) {
-    mWake.textContent = (wakeScore * 100).toFixed(1) + '%';
+    const score = (wakeScore * 100).toFixed(1) + '%';
+    mWake.textContent = wakeName ? `${wakeName} ${score}` : score;
   }
 
   // peak meter vertical
@@ -502,7 +540,6 @@ function onAudioData(data) {
   }
 
   // histórico de waveform (usa o primeiro ponto de cada chunk como representante)
-  const rep = waveform[Math.floor(waveform.length / 2)];
   waveHistory.push(rms);
   if (waveHistory.length > HISTORY) waveHistory.shift();
 
@@ -593,7 +630,15 @@ function drawBars(currentRms) {
 
 // ── controles ─────────────────────────────────────────────────────────────────
 async function startCapture() {
-  await fetch(`${API_URL}/capture/start`, { method: 'POST' });
+  try {
+    const response = await fetch(`${API_URL}/capture/start`, { method: 'POST' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  } catch (err) {
+    statusDot.className = 'status-dot stopped';
+    statusText.textContent = 'erro';
+    return;
+  }
+
   capturing = true;
   packets   = 0;
   peakVal   = 0;
@@ -605,7 +650,11 @@ async function startCapture() {
 }
 
 async function stopCapture() {
-  await fetch(`${API_URL}/capture/stop`, { method: 'POST' });
+  try {
+    await fetch(`${API_URL}/capture/stop`, { method: 'POST' });
+  } catch (err) {
+  }
+
   capturing = false;
 
   btnPlay.style.display = 'flex';
